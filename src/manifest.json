@@ -1,24 +1,52 @@
 {
   "manifest_version": 3,
-  "name": "Website Blocker",
-  "version": "1.0",
-  "description": "Block access to specified websites",
-  "permissions": [
-    "storage",
-    "declarativeNetRequest",
-    "webNavigation"
-  ],
-  "host_permissions": [
-    "<all_urls>"
-  ],
+  "name": "__MSG_extName__",
+  "short_name": "Focusgate",
+  "version": "2.0.0",
+  "description": "__MSG_extDescription__",
+  "default_locale": "en",
+  "minimum_chrome_version": "120",
+  "icons": {
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
   "action": {
-    "default_popup": "popup.html"
+    "default_popup": "pages/popup/popup.html",
+    "default_title": "Focusgate",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "32": "icons/icon32.png"
+    }
+  },
+  "options_ui": {
+    "page": "pages/options/options.html",
+    "open_in_tab": true
   },
   "background": {
-    "service_worker": "background.js"
+    "service_worker": "background/service-worker.js",
+    "type": "module"
   },
-  "icons": {
-    "48": "icon48.png",
-    "128": "icon128.png"
-  }
+  "permissions": [
+    "storage",
+    "declarativeNetRequestWithHostAccess",
+    "alarms",
+    "contextMenus",
+    "notifications"
+  ],
+  "host_permissions": ["<all_urls>"],
+  "web_accessible_resources": [
+    {
+      "resources": ["pages/blocked/blocked.html"],
+      "matches": ["<all_urls>"]
+    }
+  ],
+  "commands": {
+    "block-current-site": {
+      "suggested_key": { "default": "Alt+Shift+B" },
+      "description": "Block the current site"
+    }
+  },
+  "incognito": "spanning"
 }
