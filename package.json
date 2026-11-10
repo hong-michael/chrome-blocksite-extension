@@ -13,7 +13,6 @@
     "icons": "node scripts/render-icons.mjs",
     "package": "node scripts/package.mjs"
   },
-  "license": "MIT",
   "devDependencies": {
     "@playwright/test": "^1.65.0",
     "vitest": "^3.2.7"

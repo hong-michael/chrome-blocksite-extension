@@ -72,10 +72,15 @@ src/
     blocked/      the block page
 tests/
   unit/           Vitest, node env, in-memory chrome mock (tests/unit/chrome-mock.js)
-  e2e/            Playwright, loads src/ as an unpacked extension in Chromium
+  e2e/            Playwright, loads src/ as an unpacked extension in Chromium;
+                  `*.test` hosts resolve to a local server (see fixtures.js)
 scripts/
   render-icons.mjs   SVG → PNGs via Playwright
-  package.mjs        zip src/ into dist/focusgate-<version>.zip for the Web Store
+  screenshots.mjs    store/screenshots/*.png (1280×800, light + dark) via the E2E harness
+  package.mjs        zip src/ into dist/focusgate-<version>.zip for the Web Store (no deps)
+store/            Web Store listing assets (screenshots)
+STORE_LISTING.md  listing copy + permission justifications
+PRIVACY.md        privacy policy (required by the Web Store for host permissions)
 ```
 
 ### Data flow — storage is the single source of truth
@@ -88,8 +93,10 @@ scripts/
    alarm for the next state change, and redirects already-open tabs that are now blocked.
 4. Pages subscribe to `storage.onChanged` to re-render live.
 
-There are no runtime messages between pages and the worker, so there's no request/response
-protocol to keep in sync, and the worker can sleep freely.
+There is exactly one runtime message: `{ type: 'reconcile' }`, which a page sends when it must
+wait for DNR rules to be installed before navigating (the block page does this after granting
+temporary access, otherwise the original URL would be redirected straight back). Everything
+else flows through storage, so the worker can sleep freely.
 
 ### Blocking mechanism
 - **declarativeNetRequest dynamic rules** redirect blocked `main_frame` requests *before*
@@ -132,8 +139,9 @@ schedule enabled → active iff inside a window · otherwise active.
 
 ### Permissions (justifications for the store listing in `STORE_LISTING.md`)
 `storage`, `declarativeNetRequestWithHostAccess` + `<all_urls>` (redirect needs host access),
-`alarms`, `contextMenus`, `notifications`. (Host access also lets the worker read open tabs' URLs to
-enforce new blocks, so the `tabs` permission isn't needed.)
+`alarms`, `contextMenus`, `notifications`, `favicon` (site icons in lists; no install warning).
+Host access also lets the worker read open tabs' URLs to enforce new blocks, so the `tabs`
+permission isn't needed.
 
 ## UI / design
 - System font stack, no remote assets (privacy + CSP). Design tokens in
@@ -144,18 +152,25 @@ enforce new blocks, so the `tabs` permission isn't needed.)
   `prefers-reduced-motion`.
 - Never build DOM with `innerHTML` from user data — use `ui.js` `h()` helper (v1 had an XSS
   via `innerHTML` with the site string).
+- Pages re-render fully on storage changes. Anything the user is typing must survive that:
+  give inputs a `data-key` (focus/caret are restored) and, in options, bind unsaved text with
+  `draft()`. Toggle/select handlers must revert the control if the action throws (focus lock).
 
 ## Conventions
 - ES modules, 2-space indent, single quotes, semicolons, no build step.
 - `lib/` must not touch the DOM; anything time-dependent takes `now` as a parameter.
 - Every `lib/` module has a unit test. New behaviour → new test.
 - Commit in small, focused steps.
+- Releasing: bump `version` in both `src/manifest.json` and `package.json`, run `npm run test:all`,
+  then `npm run package` and upload the zip.
 
 ## Commands
 ```bash
 npm test            # unit tests (Vitest)
 npm run test:e2e    # end-to-end in real Chromium with the extension loaded (Playwright)
 npm run icons       # re-render icons from src/icons/icon.svg
+npm run screenshots # regenerate store/screenshots/
 npm run package     # dist/focusgate-<version>.zip for the Chrome Web Store
+HEADED=1 npm run test:e2e   # watch the E2E run in a visible browser
 ```
 Load unpacked for development: `chrome://extensions` → Developer mode → Load unpacked → `src/`.
