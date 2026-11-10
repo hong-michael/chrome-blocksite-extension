@@ -25,13 +25,15 @@ function assertUnlocked(state, now) {
 
 /**
  * Add parsed rules ({ type, value }) to a list. Duplicates are skipped.
- * Adding is always allowed, even while locked.
+ * Adding to the block list is always allowed, even while locked; adding to the allow-list loosens
+ * blocking, so it isn't.
  */
 export async function addRules(parsed, { list = 'rules', now = Date.now() } = {}) {
   assertList(list);
   let added = [];
   let duplicates = [];
   await updateState((state) => {
+    if (list === 'allowlist') assertUnlocked(state, now);
     const existing = new Map(state[list].map((r) => [`${r.type}:${r.value}`, r]));
     const next = [...state[list]];
     added = [];
@@ -216,6 +218,7 @@ export async function importBackup(input, { mode = 'merge', now = Date.now() } =
       const incoming = data[list] ?? [];
       const keys = new Set(state[list].map((r) => `${r.type}:${r.value}`));
       const fresh = incoming.filter((r) => !keys.has(`${r.type}:${r.value}`));
+      if (list === 'allowlist' && fresh.length) assertUnlocked(state, now);
       summary[list] = fresh.length;
       if (fresh.length) patch[list] = [...fresh, ...state[list]];
     }

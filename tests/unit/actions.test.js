@@ -76,6 +76,8 @@ describe('focus lock', () => {
     await expect(actions.grantTempAccess('https://a.com', opts)).rejects.toThrow(LockedError);
     await expect(actions.setSchedule({ enabled: false, windows: [] }, opts)).rejects.toThrow(LockedError);
     await expect(actions.resetAll(opts)).rejects.toThrow(LockedError);
+    await expect(actions.addRuleFromInput('b.com', { ...opts, list: 'allowlist' })).rejects.toThrow(LockedError);
+    await expect(actions.importBackup(['z.com'], { ...opts, mode: 'replace' })).rejects.toThrow(LockedError);
   });
 
   it('still allows tightening and cosmetic changes', async () => {
