@@ -2,13 +2,14 @@
   "name": "focusgate",
   "version": "2.0.0",
   "private": true,
-  "description": "Focusgate — a site blocker and focus timer Chrome extension (Manifest V3).",
+  "description": "Focusgate \u00e2\u20ac\u201d a site blocker and focus timer Chrome extension (Manifest V3).",
   "type": "module",
   "scripts": {
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
     "test:all": "vitest run && playwright test",
+    "screenshots": "node scripts/screenshots.mjs",
     "icons": "node scripts/render-icons.mjs",
     "package": "node scripts/package.mjs"
   },

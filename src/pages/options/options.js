@@ -42,7 +42,8 @@ const els = {
 let state;
 let route = 'blocklist';
 let showWelcome = false;
-let ui = { search: '', bulkOpen: false, addType: 'auto', importMode: 'merge' };
+// UI-only state that must survive re-renders (drafts are unsaved text in inputs, keyed by data-key).
+let ui = { search: '', bulkOpen: false, addType: 'auto', importMode: 'merge', drafts: {} };
 let tickers = [];
 
 // ---------- Routing & shell ----------
@@ -127,6 +128,18 @@ function lockBanner() {
 
 function card(...children) {
   return h('section', { class: 'card' }, children);
+}
+
+/** Bind a text input to a draft so typing survives re-renders triggered by storage changes. */
+function draft(el) {
+  const key = el.dataset.key;
+  if (key in ui.drafts) el.value = ui.drafts[key];
+  el.addEventListener('input', () => (ui.drafts[key] = el.value));
+  return el;
+}
+
+function clearDraft(key) {
+  delete ui.drafts[key];
 }
 
 function settingRow({ title, desc, control }) {
@@ -240,7 +253,8 @@ function addCard(list, locked) {
     try {
       const { added, duplicates } = await actions.addRuleFromInput(input.value, { type: ui.addType, list });
       if (added.length) {
-        input.value = '';
+        clearDraft(`add-${list}`);
+        render();
         toast(`${added[0].value} ${isAllow ? 'allowed' : 'blocked'}`);
       } else if (duplicates.length) {
         error.textContent = `${duplicates[0].value} is already on your list.`;
@@ -251,6 +265,7 @@ function addCard(list, locked) {
       input.focus();
     }
   };
+  draft(input);
   input.addEventListener('input', () => {
     error.textContent = '';
     input.removeAttribute('aria-invalid');
@@ -306,6 +321,7 @@ function bulkEditor(list) {
     dataset: { key: `bulk-${list}` },
     attrs: { 'aria-label': 'Sites to add, one per line' },
   });
+  draft(area);
   const add = async () => {
     const { rules, errors } = parseBulkInput(area.value, list === 'allowlist' ? 'domain' : 'auto');
     if (!rules.length && !errors.length) return;
@@ -315,7 +331,9 @@ function bulkEditor(list) {
     if (res.duplicates.length) parts.push(`${res.duplicates.length} already listed`);
     if (errors.length) parts.push(`${errors.length} invalid`);
     toast(parts.join(' · '), { type: errors.length ? 'error' : 'info' });
-    area.value = errors.map((e) => e.input).join('\n');
+    // Leave only the entries that failed, so they can be fixed.
+    ui.drafts[`bulk-${list}`] = errors.map((e) => e.input).join('\n');
+    render();
   };
   return h('div', { class: 'bulk' }, area, h('button', { class: 'btn btn-soft', type: 'button', onclick: add }, icon('plus'), 'Add all'));
 }
@@ -414,6 +432,11 @@ function ruleRow(rule, list, locked) {
 
 // ---------- Schedule ----------
 
+/** Full weekday name for day index (0 = Sunday); 2026-11-08 was a Sunday. */
+function longDayName(d) {
+  return new Date(2026, 10, 8 + d).toLocaleDateString(undefined, { weekday: 'long' });
+}
+
 function pageSchedule() {
   const now = Date.now();
   const locked = isLocked(state, now);
@@ -448,7 +471,7 @@ function pageSchedule() {
             class: 'day',
             text: DAY_NAMES[d].slice(0, 2),
             disabled: locked,
-            attrs: { 'aria-pressed': String(w.days.includes(d)), 'aria-label': DAY_NAMES[d] },
+            attrs: { 'aria-pressed': String(w.days.includes(d)), 'aria-label': longDayName(d) },
             onclick: () => {
               const days = w.days.includes(d) ? w.days.filter((x) => x !== d) : [...w.days, d];
               if (!days.length) return toast('Pick at least one day.', { type: 'error' });
@@ -872,9 +895,11 @@ async function main() {
     els.main.focus({ preventScroll: true });
     window.scrollTo(0, 0);
   });
-  onStateChange(async () => {
+  onStateChange(async (changes) => {
     state = await loadState();
-    render();
+    // Stats are written on every block; only re-render for them on the stats page.
+    const statsOnly = Object.keys(changes).every((k) => k === 'stats');
+    if (!statsOnly || route === 'stats') render();
   }, { includeStats: true });
   let expiredFocus = null;
   everySecond(() => {
