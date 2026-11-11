@@ -1,0 +1,10 @@
+{
+  "extName": {
+    "message": "Focusgate: Site Blocker & Focus Timer",
+    "description": "Extension name shown in the Chrome Web Store and chrome://extensions."
+  },
+  "extDescription": {
+    "message": "Block distracting websites, schedule focus hours and run focus sessions. Private: everything stays on your device.",
+    "description": "Store description (max 132 characters)."
+  }
+}
